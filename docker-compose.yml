@@ -1,0 +1,18 @@
+---
+    version: '3'
+    services:
+      factorio:
+        image: ${FACTORIO_IMAGE}
+        restart: unless-stopped
+        stdin_open: true
+        tty: true
+        env_file:
+          - server.env
+        ports:
+          - "27015:27015"
+          - "34197:34197/udp"
+        volumes:
+          - factorio_data:/var/lib/factorio
+    
+    volumes:
+      factorio_data:
