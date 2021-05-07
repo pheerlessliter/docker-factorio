@@ -1,0 +1,79 @@
+resources:
+  - name: factorio_repo
+    type: GitRepo
+    configuration:
+      gitProvider: GitHub_Public
+      path: pheerlessliter/docker-factorio
+      branches:
+        include: main
+
+  - name: factorio_image
+    type: Image
+    configuration:
+      registry: Artifactory_Siren
+      sourceRepository: gameservers-docker-local
+      imageName: siren.jfrog.io/gameservers-docker-local/factorio
+      imageTag: latest
+      autoPull: true
+      
+  - name: factorio_build_info
+    type: BuildInfo
+    configuration:
+      sourceArtifactory: Artifactory_Siren
+      buildName: factorio_build
+      buildNumber: 1    
+
+  - name: factorio_promoted_build_info
+    type: BuildInfo
+    configuration:
+      sourceArtifactory: Artifactory_Siren
+      buildName: factorio_build
+      buildNumber: 1
+      
+
+pipelines:
+  - name: pipeline_factorio
+    steps:
+      - name: docker_build
+        type: DockerBuild
+        configuration:
+          affinityGroup: factorio_group
+          dockerFileLocation: .
+          dockerFileName: Dockerfile
+          dockerImageName: siren.jfrog.io/gameservers-docker-local/factorio
+          dockerImageTag: ${run_number}
+          inputResources:
+            - name: factorio_repo
+          integrations:
+            - name: Artifactory_Siren
+
+      - name: docker_push
+        type: DockerPush
+        configuration:
+          affinityGroup: factorio_group
+          targetRepository: docker-local
+          integrations:
+            - name: Artifactory_Siren
+          inputSteps:
+            - name: docker_build
+          outputResources:
+            - name: factorio_image
+
+      - name: publish_factorio_build
+        type: PublishBuildInfo
+        configuration:
+          inputSteps:
+            - name: docker_push
+          outputResources:
+            - name: factorio_build_info
+
+      - name: promote_factorio_build
+        type: PromoteBuild
+        configuration:
+          targetRepository: demo-pipelines
+          integrations:
+            - name: Artifactory_Siren
+          inputResources:
+            - name: factorio_build_info
+          outputResources:
+            - name: factorio_promoted_build_info
